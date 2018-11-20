@@ -1,0 +1,238 @@
+---
+title: "Retail Case Study"
+author: "Anshu"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+```{r}
+getwd()
+# setwd("F:/BA/R case studies/R case study 2 (Retail)")
+
+Customer <- read.csv("Customer.csv")
+prod_cat_info <- read.csv("prod_cat_info.csv")
+Transactions <- read.csv("transactions.csv")
+```
+
+Question no.1
+
+```{r}
+
+Customer$Gender <- as.character(Customer$Gender)
+Customer$DOB <- as.Date(Customer$DOB, format = "%d-%m-%Y")
+
+Customer_Final <- merge(x=Transactions,y=Customer,by.x = "cust_id",by.y = "customer_Id")
+Customer_Final <- merge(x=Customer_Final,y= prod_cat_info,by ="prod_cat_code",all = T)
+
+```
+
+Using dplyr
+```{r include=FALSE}
+require(dplyr)
+```
+
+```{r}
+Customer_Final1 <- full_join(Transactions,prod_cat_info,by = "prod_cat_code")
+Customer <- dplyr::rename(Customer,"cust_id"="customer_Id")
+Customer_Final1 <- full_join(Customer_Final1,Customer,by = "cust_id")
+
+```
+
+Question no.1
+
+```{r}
+summary(Customer_Final)
+```
+```{r include=FALSE}
+str(Customer_Final)
+
+```
+
+
+#Histograms
+
+```{r}
+
+hist_prod_cat_code <- hist(Customer_Final$prod_cat_code,main = "Histogram of prod_cat_code",xlab = "prod_cat_code")
+
+hist_transaction_id <- hist(Customer_Final$transaction_id,main = "Histogram of transaction_id",xlab = "transaction_id")
+
+hist_prod_subcat_code <- hist(Customer_Final$prod_subcat_code,main = "Histogram of prod_subcat_code",xlab = "prod_subcat_code" )
+
+hist_Qty <- hist(Customer_Final$Qty,main = "Histogram of Qty",xlab = "Quantity")
+
+hist_Rate <- hist(Customer_Final$Rate,main = "Histogram of Rate",xlab = "Rate")
+
+hist_Tax <- hist(Customer_Final$Tax,main = "Histogram of Tax",xlab = "Tax")
+
+hist_Total_amt <- hist(Customer_Final$total_amt,main = "Histogram of Total Amount",xlab = "Total Amount")
+
+hist_city_code <- hist(Customer_Final$city_code,main = "Histogram of City Code",xlab = "city_code")
+
+hist_prod_sub_cat_code <- hist(Customer_Final$prod_sub_cat_code,main = "Histogram of prod_sub_cat_code",xlab = "prod_sub_cat_code")
+
+```
+
+#Frequency Bars
+
+```{r include=FALSE}
+require(ggplot2)
+require(lubridate)
+
+```
+
+```{r}
+Gender <- table(Customer_Final$Gender)
+Bar_Gender <- barplot(Gender,main = "Gender",col="Green")
+
+Tran_date <- table(Customer_Final$tran_date)
+Bar_Tran_date <- barplot(Tran_date,main = "Transaction Date")
+
+Store_Type <- table(Customer_Final$Store_type)
+Bar_Store_Type <- barplot(Store_Type,main = "Store Type",col="Blue")
+
+Prod_cat <- table(Customer_Final$prod_cat)
+Bar_Prod_cat <- barplot(Prod_cat,main = "Product Category",col="orange red")
+
+prod_subcat <- table(Customer_Final$prod_subcat)
+Bar_prod_subcat <- barplot(prod_subcat,main = "Product Sub-Category",col="red") 
+
+```
+
+Question no.3(a)
+
+```{r}
+Transaction_Date <- parse_date_time(Customer_Final$tran_date, c("mdy", "dmy"))
+Transaction_Date <- as.Date(Transaction_Date,format = "%d-%m-Y")
+TimePeriod <- print(max(Transaction_Date,na.rm = T)-min(Transaction_Date,na.rm = T))
+```
+
+Question no.3(b)
+
+```{r}
+
+Total_Neg_Num <- (length(which(Customer_Final$total_amt<0)))
+print(Total_Neg_Num)
+```
+
+Question no.4
+
+```{r}
+No.ofMales <- print(length(Customer_Final$Gender[Customer_Final$Gender=="M"]))
+No.ofFemales <- print(length(Customer_Final$Gender[Customer_Final$Gender=="F"]))
+Sum <- sum(No.ofMales+No.ofFemales)
+Total <- c(Males=No.ofMales,Females=No.ofFemales)
+Bar_M_F <- barplot(Total,main = "Numbers of Male-Female",ylab = "Numbers",col="Green")
+
+PercentMales <- print((No.ofMales/Sum)*100)
+PercentFemales <- print((No.ofFemales/Sum)*100)
+Percentage <- c(Males=PercentMales,Female=PercentFemales)
+Bar_M_F_Per <- barplot(Percentage, main = "Percentage Wise Male-Female",ylab = "Percentage",col="red")
+
+```
+
+Question no.5(a)
+
+```{r include=FALSE}
+require(dplyr)
+
+```
+
+```{r}
+CityWiseCust <- Customer %>% group_by(city_code) %>% summarise(No_Of_Cust=length(city_code))
+CityWiseCust$Percentage <-(CityWiseCust$No_Of_Cust/sum(CityWiseCust$No_Of_Cust)*100)
+CityWiseCust$Percentage <- round(CityWiseCust$Percentage,digits = 3)
+
+MaxCityCustomer <-subset(CityWiseCust,Percentage=max(Percentage))
+MaxCity <- print(MaxCityCustomer[which.max(CityWiseCust$Percentage),])
+```
+
+Question no.5(b)
+```{r include=FALSE}
+require(ggplot2)
+
+```
+```{r}
+CatVsCust_Count <-ggplot(CityWiseCust) + aes(x = city_code , y = No_Of_Cust , fill = city_code) +
+                    geom_bar(stat = "identity") 
+print(CatVsCust_Count)
+```
+
+Question no.6
+
+```{r}
+Store_Type1 <- Customer_Final %>% group_by(Store_type) %>% summarise(TOtalAmount= sum(total_amt,na.rm = T))
+Store_Type2 <- Customer_Final %>% group_by(Store_type,cust_id) %>% summarise()
+Store_Type3 <- Store_Type2 %>% group_by(Store_type) %>% summarise(TotalQuantity = length(Store_type))
+
+Store_Type1 <- merge(Store_Type1,Store_Type3,all = T)
+StoreName_byValue <- Store_Type1[which.max(Store_Type1$TOtalAmount),]
+print(StoreName_byValue)
+StoreName_byQuantity <- Store_Type1[which.max(Store_Type1$TotalQuantity),]
+print(StoreName_byQuantity)
+```
+
+Question no.7
+```{r}
+Flagship_Stores <- Customer_Final %>% group_by(Store_type,prod_cat) %>% summarise(TotalRevenue=sum(total_amt,na.rm=T))
+
+Flagship_Stores_Clothing <- Flagship_Stores[Flagship_Stores$Store_type=="Flagship store" & Flagship_Stores$prod_cat=="Clothing",]
+print(Flagship_Stores_Clothing)
+Flagship_Stores_Electronics <- Flagship_Stores[Flagship_Stores$Store_type=="Flagship store" & Flagship_Stores$prod_cat=="Electronics",]
+print(Flagship_Stores_Electronics)
+```
+
+Question no.8 
+```{r}
+Transact <- Customer_Final %>% group_by(cust_id,total_amt) %>% summarise()
+Transact1 <- Transact %>% group_by(cust_id) %>% summarise(No.Of_Transaction =length(which(total_amt>0)))
+Customer_morethan_5_Transct <- print(length(which(Transact1$No.Of_Transaction >= 5)))
+
+```
+
+Question no.9
+```{r}
+Male_customer <- Customer_Final %>% group_by(Gender,prod_cat) %>% summarise(Total_Revenue = sum(total_amt,na.rm = T))
+Male_cust <- Male_customer[Male_customer$Gender=="M"& Male_customer$prod_cat == "Electronics",]
+print(Male_cust)
+```
+
+Question no.10(a)
+
+```{r}
+
+Customer_Final$tran_date <- parse_date_time(Customer_Final$tran_date, c("mdy", "dmy"))  #imp
+Customer_Final$tran_date <- as.Date(Customer_Final$tran_date,format = "%d-%m-Y")
+
+Customer_Final$Age <- (Customer_Final$tran_date - Customer_Final$DOB)/365.24
+Customer_Final$Age <- round(Customer_Final$Age,digits = 2)
+
+  #Elder is 18-25
+
+Customer_Final$Age_Group <- ifelse(Customer_Final$Age<=25,"Young",ifelse(Customer_Final$Age<=35,"Elder","Mature"))
+Aged <- Customer_Final %>% group_by(Age_Group,prod_cat) %>% summarise(TotalRevenue=sum(total_amt,na.rm = T))
+
+Age_Grp_Elec <- Aged[Aged$Age_Group=="Young" & Aged$prod_cat=="Electronics",]
+print(Age_Grp_Elec)
+Age_Grp_Book <- Aged[Aged$Age_Group=="Young" & Aged$prod_cat=="Books",]
+print(Age_Grp_Book)
+
+```
+
+Question no.10(b)
+```{r}
+date_revenue <- Customer_Final %>% group_by(tran_date) %>% summarise(TotalRevenue=sum(total_amt, na.rm = T))
+Date <- date_revenue[date_revenue$tran_date>="2014-01-01" & date_revenue$tran_date<="2014-03-01",]
+TotalRevenueGen <- print(sum(date_revenue$TotalRevenue))
+```
+
+
+
+
+
+
+
+
+
